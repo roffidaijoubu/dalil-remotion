@@ -37,28 +37,28 @@ interface HighlightSegment {
 // Helper function to convert CSS color to rgba with opacity
 const colorToRgba = (color: string, opacity: number = 0.5): string => {
   // Handle hex colors
-  if (color.startsWith('#')) {
-    const hex = color.replace('#', '');
+  if (color.startsWith("#")) {
+    const hex = color.replace("#", "");
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   }
-  
+
   // Handle named colors
   const colorMap: { [key: string]: string } = {
-    red: 'rgba(255, 0, 0, ' + opacity + ')',
-    blue: 'rgba(0, 0, 255, ' + opacity + ')',
-    green: 'rgba(0, 128, 0, ' + opacity + ')',
-    yellow: 'rgba(255, 255, 0, ' + opacity + ')',
-    orange: 'rgba(255, 165, 0, ' + opacity + ')',
-    purple: 'rgba(128, 0, 128, ' + opacity + ')',
-    pink: 'rgba(255, 192, 203, ' + opacity + ')',
-    cyan: 'rgba(0, 255, 255, ' + opacity + ')',
-    magenta: 'rgba(255, 0, 255, ' + opacity + ')',
-    lime: 'rgba(0, 255, 0, ' + opacity + ')',
+    red: "rgba(255, 0, 0, " + opacity + ")",
+    blue: "rgba(0, 0, 255, " + opacity + ")",
+    green: "rgba(0, 128, 0, " + opacity + ")",
+    yellow: "rgba(255, 255, 0, " + opacity + ")",
+    orange: "rgba(255, 165, 0, " + opacity + ")",
+    purple: "rgba(128, 0, 128, " + opacity + ")",
+    pink: "rgba(255, 192, 203, " + opacity + ")",
+    cyan: "rgba(0, 255, 255, " + opacity + ")",
+    magenta: "rgba(255, 0, 255, " + opacity + ")",
+    lime: "rgba(0, 255, 0, " + opacity + ")",
   };
-  
+
   return colorMap[color.toLowerCase()] || `rgba(128, 128, 128, ${opacity})`;
 };
 
@@ -136,8 +136,8 @@ const HighlightedText: React.FC<{
               : 0;
 
           return (
-            <span 
-              key={index} 
+            <span
+              key={index}
               className="relative"
               style={{
                 // For completed highlights, show full background
@@ -146,9 +146,10 @@ const HighlightedText: React.FC<{
                 }),
                 // For current highlight, use moving linear gradient
                 ...(isCurrentHighlight && {
-                  background: highlightDirection === "rtl" 
-                    ? `linear-gradient(to left, ${colorToRgba(segment.color || "#ff0000", 0.5)} ${currentProgress * 100}%, transparent ${currentProgress * 100}%)`
-                    : `linear-gradient(to right, ${colorToRgba(segment.color || "#ff0000", 0.5)} ${currentProgress * 100}%, transparent ${currentProgress * 100}%)`,
+                  background:
+                    highlightDirection === "rtl"
+                      ? `linear-gradient(to left, ${colorToRgba(segment.color || "#ff0000", 0.5)} ${currentProgress * 100}%, transparent ${currentProgress * 100}%)`
+                      : `linear-gradient(to right, ${colorToRgba(segment.color || "#ff0000", 0.5)} ${currentProgress * 100}%, transparent ${currentProgress * 100}%)`,
                 }),
               }}
             >
@@ -184,7 +185,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   useEffect(() => {
     // Delay render until QR code is generated
     const handle = delayRender("Generating QR code");
-    
+
     QRCode.toDataURL(bookUrl, {
       width: 120,
       margin: 1,
@@ -213,18 +214,18 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
 
     const handle = delayRender("Loading book cover image");
     const img = new Image();
-    
+
     img.onload = () => {
       setImageLoaded(true);
       continueRender(handle);
     };
-    
+
     img.onerror = () => {
       console.error("Failed to load book cover image:", bookCoverUrl);
       setImageLoaded(true);
       continueRender(handle);
     };
-    
+
     img.src = bookCoverUrl;
   }, [bookCoverUrl]);
 
@@ -233,8 +234,13 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
 
   // Count total highlights and calculate individual durations based on text length
   const arabicHighlights = arabicSegments.filter((s) => s.isHighlight);
-  const translationHighlights = translationSegments.filter((s) => s.isHighlight);
-  const totalHighlights = Math.min(arabicHighlights.length, translationHighlights.length);
+  const translationHighlights = translationSegments.filter(
+    (s) => s.isHighlight,
+  );
+  const totalHighlights = Math.min(
+    arabicHighlights.length,
+    translationHighlights.length,
+  );
 
   // Calculate duration for each highlight based on text length
   const highlightDurations = [];
@@ -244,22 +250,22 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   for (let i = 0; i < totalHighlights; i++) {
     const arabicText = arabicHighlights[i]?.text || "";
     const translationText = translationHighlights[i]?.text || "";
-    
+
     // Use the longer text to calculate duration (character count)
     const maxLength = Math.max(arabicText.length, translationText.length);
-    
+
     // Base duration + extra time for longer text (roughly 0.05 seconds per character)
     const extraTime = Math.max(0, (maxLength - 20) * 0.05); // Extra time for text longer than 20 chars
     const durationSeconds = highlightDelaySeconds + extraTime;
     const durationFrames = Math.max(minDurationFrames, durationSeconds * fps);
-    
+
     highlightDurations.push(durationFrames);
   }
 
   // Calculate cumulative timing for each highlight
   const initialDelayFrames = 1 * fps; // 1 second breathing room before first highlight
   const cumulativeTimings = [initialDelayFrames]; // Start with initial delay
-  
+
   for (let i = 0; i < highlightDurations.length; i++) {
     const lastTiming = cumulativeTimings[cumulativeTimings.length - 1];
     cumulativeTimings.push(lastTiming + highlightDurations[i]);
@@ -267,7 +273,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
 
   // Find current highlight index and progress
   // Highlights should start after: startDelay (1s) + entryAnimation (2s) + initialDelay (1s) = 4s total
-  const totalDelayBeforeHighlights = (1 + 2 + 1) * fps; // 4 seconds total delay
+  const totalDelayBeforeHighlights = (1 + 1) * fps; // 2 seconds total delay
   const frameAfterAllDelays = Math.max(0, frame - totalDelayBeforeHighlights);
   let currentHighlightIndex = -1;
   let progressInCurrentHighlight = 0;
@@ -275,7 +281,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   for (let i = 0; i < totalHighlights; i++) {
     const startFrame = cumulativeTimings[i] - initialDelayFrames;
     const endFrame = cumulativeTimings[i + 1] - initialDelayFrames;
-    
+
     if (frameAfterAllDelays >= startFrame && frameAfterAllDelays < endFrame) {
       currentHighlightIndex = i;
       progressInCurrentHighlight = frameAfterAllDelays - startFrame;
@@ -284,7 +290,11 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   }
 
   // If we're past all highlights, set to the last one as completed
-  if (currentHighlightIndex === -1 && frameAfterAllDelays >= (cumulativeTimings[totalHighlights] - initialDelayFrames)) {
+  if (
+    currentHighlightIndex === -1 &&
+    frameAfterAllDelays >=
+      cumulativeTimings[totalHighlights] - initialDelayFrames
+  ) {
     currentHighlightIndex = totalHighlights; // This will make all highlights appear as completed
   }
 
@@ -298,7 +308,9 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
             stiffness: 100,
           },
         })
-      : currentHighlightIndex >= totalHighlights ? 1 : 0;
+      : currentHighlightIndex >= totalHighlights
+        ? 1
+        : 0;
 
   // Entry animation for the whole layout (delayed by 1 second)
   const startDelayFrames = 1 * fps; // 1 second delay before fade-in starts
@@ -318,7 +330,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
     <AbsoluteFill>
       {/* White Background Layer */}
       <AbsoluteFill style={{ backgroundColor: "white" }} />
-      
+
       {/* Semi-transparent Background Video Layer */}
       <AbsoluteFill>
         <OffthreadVideo
@@ -344,76 +356,85 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
             width: "80%",
           }}
         >
-        {/* Left Column - Text Content */}
-        <div className="flex-1 flex flex-col space-y-6">
-          {/* Arabic Text */}
-          <div>
-            <HighlightedText
-              segments={arabicSegments}
-              isArabic={true}
-              currentHighlightIndex={currentHighlightIndex}
-              highlightProgress={highlightProgress}
-              highlightDirection="rtl"
-            />
-          </div>
-
-          {/* Translation Text */}
-          <div>
-            <HighlightedText
-              segments={translationSegments}
-              isArabic={false}
-              currentHighlightIndex={currentHighlightIndex}
-              highlightProgress={highlightProgress}
-              highlightDirection="ltr"
-            />
-          </div>
-
-          {/* Grading - below translation text */}
-          {grading && (
-            <div className="bg-green-600 text-white px-4 py-2 text-lg font-semibold w-fit rounded">
-              {grading}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - Book Cover and Details */}
-        <div className="shrink-0 min-w-[300px] flex flex-col items-center justify-center space-y-4">
-          {/* Book Title - Centered */}
-          <div className="bg-blue-700 text-white px-4 py-3 text-xl font-semibold w-full text-center">
-            <h1>{bookTitle}</h1>
-          </div>
-          {/* Author */}
-          <div className="text-center">
-            {bookAuthor && (
-              <p className="text-lg font-semibold text-gray-700">{bookAuthor}</p>
-            )}
-            {bookExtra && (
-              <p className="text-sm text-gray-500 mt-1">{bookExtra}</p>
-            )}
-          </div>
-          {/* Book Cover */}
-          <div className="bg-gray-200 rounded-lg shadow-xl w-full relative" style={{ aspectRatio: "3/4" }}>
-            {/* Use Remotion's Img component to prevent flickering */}
-            {bookCoverUrl ? (
-              <Img
-                src={bookCoverUrl}
-                className="w-full h-full object-cover rounded-lg"
-                alt="Book Cover"
+          {/* Left Column - Text Content */}
+          <div className="flex-1 flex flex-col space-y-6 -mb-16">
+            {/* Arabic Text */}
+            <div>
+              <HighlightedText
+                segments={arabicSegments}
+                isArabic={true}
+                currentHighlightIndex={currentHighlightIndex}
+                highlightProgress={highlightProgress}
+                highlightDirection="rtl"
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-500 text-center p-4">
-                [Book Cover Image]
-              </div>
-            )}
-            {/* QR Code */}
-            {qrCodeDataUrl && (
-              <div className="bg-white p-3 rounded-lg shadow-md h-fit w-fit absolute bottom-0 right-0">
-                <img src={qrCodeDataUrl} alt="QR Code" className="w-32 h-32" />
+            </div>
+
+            {/* Translation Text */}
+            <div>
+              <HighlightedText
+                segments={translationSegments}
+                isArabic={false}
+                currentHighlightIndex={currentHighlightIndex}
+                highlightProgress={highlightProgress}
+                highlightDirection="ltr"
+              />
+            </div>
+
+            {/* Grading - below translation text */}
+            {grading && (
+              <div className="bg-green-600 text-white px-4 py-2 text-lg font-semibold w-fit rounded">
+                {grading}
               </div>
             )}
           </div>
+
+          {/* Right Column - Book Cover and Details */}
+          <div className="shrink-0 min-w-[300px] flex flex-col items-center justify-center space-y-4">
+            {/* Book Title - Centered */}
+            <div className="bg-blue-700 text-white px-4 py-3 text-xl font-semibold w-full text-center">
+              <h1>{bookTitle}</h1>
+            </div>
+            {/* Author */}
+            <div className="text-center flex items-center justify-between w-full">
+              {bookExtra && (
+                <p className="text-base font-semibold">{bookExtra}</p>
+              )}
+              {bookAuthor && (
+                <p className="text-sm italic text-gray-700">
+                  {bookAuthor}
+                </p>
+              )}
+            </div>
+            {/* Book Cover */}
+            <div
+              className="bg-gray-200 rounded-lg shadow-xl w-full relative"
+              style={{ aspectRatio: "3/4" }}
+            >
+              {/* Use Remotion's Img component to prevent flickering */}
+              {bookCoverUrl ? (
+                <Img
+                  src={bookCoverUrl}
+                  className="w-full h-full object-cover rounded-lg"
+                  alt="Book Cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 text-center p-4">
+                  [Book Cover Image]
+                </div>
+              )}
+              {/* QR Code */}
+              {qrCodeDataUrl && (
+                <div className="bg-white p-3 rounded-lg shadow-md h-fit w-fit absolute bottom-0 right-0">
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="QR Code"
+                    className="w-32 h-32"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

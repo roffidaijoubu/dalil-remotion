@@ -55,7 +55,7 @@ export const RemotionRoot: React.FC = () => {
         height={1080}
         schema={arabicBookSchema}
         defaultProps={{
-          bookTitle: "Kitab An-Nahw (Arabic Grammar Book)",
+          bookTitle: "Kitab An-Nahw",
           bookAuthor: "Imam Sibawayh",
           bookExtra: "Volume 1 - Page 45",
           bookCoverUrl: "https://picsum.photos/300/400?random=1",
