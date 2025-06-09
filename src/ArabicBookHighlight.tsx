@@ -16,7 +16,7 @@ import QRCode from "qrcode";
 
 export const arabicBookSchema = z.object({
   bookTitle: z.string(),
-  bookAuthor: z.string(),
+  bookAuthor: z.string().optional(),
   bookExtra: z.string().optional(),
   bookCoverUrl: z.string().url(),
   bookUrl: z.string().url(),
@@ -384,7 +384,9 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
           </div>
           {/* Author */}
           <div className="text-center">
-            <p className="text-lg font-semibold text-gray-700">{bookAuthor}</p>
+            {bookAuthor && (
+              <p className="text-lg font-semibold text-gray-700">{bookAuthor}</p>
+            )}
             {bookExtra && (
               <p className="text-sm text-gray-500 mt-1">{bookExtra}</p>
             )}
