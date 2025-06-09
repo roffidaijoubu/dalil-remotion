@@ -34,6 +34,34 @@ interface HighlightSegment {
   isHighlight: boolean;
 }
 
+// Helper function to convert CSS color to rgba with opacity
+const colorToRgba = (color: string, opacity: number = 0.5): string => {
+  // Handle hex colors
+  if (color.startsWith('#')) {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  
+  // Handle named colors
+  const colorMap: { [key: string]: string } = {
+    red: 'rgba(255, 0, 0, ' + opacity + ')',
+    blue: 'rgba(0, 0, 255, ' + opacity + ')',
+    green: 'rgba(0, 128, 0, ' + opacity + ')',
+    yellow: 'rgba(255, 255, 0, ' + opacity + ')',
+    orange: 'rgba(255, 165, 0, ' + opacity + ')',
+    purple: 'rgba(128, 0, 128, ' + opacity + ')',
+    pink: 'rgba(255, 192, 203, ' + opacity + ')',
+    cyan: 'rgba(0, 255, 255, ' + opacity + ')',
+    magenta: 'rgba(255, 0, 255, ' + opacity + ')',
+    lime: 'rgba(0, 255, 0, ' + opacity + ')',
+  };
+  
+  return colorMap[color.toLowerCase()] || `rgba(128, 128, 128, ${opacity})`;
+};
+
 const parseTextWithHighlights = (text: string): HighlightSegment[] => {
   const segments: HighlightSegment[] = [];
   const regex = /<highlight(?:\s+color="([^"]*)")?>([^<]*)<\/highlight>/g;
@@ -108,46 +136,23 @@ const HighlightedText: React.FC<{
               : 0;
 
           return (
-            <span key={index} className="relative inline-block">
-              {/* Original text color (e.g., black), always underneath */}
+            <span 
+              key={index} 
+              className="relative"
+              style={{
+                // For completed highlights, show full background
+                ...(isCompleted && {
+                  backgroundColor: colorToRgba(segment.color || "#ff0000", 0.5),
+                }),
+                // For current highlight, use moving linear gradient
+                ...(isCurrentHighlight && {
+                  background: highlightDirection === "rtl" 
+                    ? `linear-gradient(to left, ${colorToRgba(segment.color || "#ff0000", 0.5)} ${currentProgress * 100}%, transparent ${currentProgress * 100}%)`
+                    : `linear-gradient(to right, ${colorToRgba(segment.color || "#ff0000", 0.5)} ${currentProgress * 100}%, transparent ${currentProgress * 100}%)`,
+                }),
+              }}
+            >
               {segment.text}
-
-              {/* Overlay that wipes in, containing the highlight background and the white text */}
-              <span
-                className="absolute top-0 bottom-0 h-full" // Base class for overlay
-                style={{
-                  width: `${currentProgress * 100}%`,
-                  overflow: "hidden", // Clips the content to create the wipe effect
-                  ...(highlightDirection === "rtl"
-                    ? { right: 0, left: "auto" }
-                    : { left: 0, right: "auto" }),
-                }}
-              >
-                {/* Background color of the highlight */}
-                <span
-                  className="absolute inset-0"
-                  style={{
-                    backgroundColor: segment.color,
-                  }}
-                />
-                {/* Text in 'highlighted' color (e.g., white), on top of the highlight background */}
-                <span
-                  // This span now explicitly fills its parent (the wiping overlay)
-                  // and aligns its text content based on isArabic.
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    color: "white", // Highlighted text color
-                    whiteSpace: "nowrap", // Prevents text reflow during animation
-                    textAlign: isArabic ? "right" : "left", // Align text within this span
-                  }}
-                >
-                  {segment.text}
-                </span>
-              </span>
             </span>
           );
         }
@@ -226,24 +231,65 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   const arabicSegments = parseTextWithHighlights(arabicText);
   const translationSegments = parseTextWithHighlights(translationText);
 
-  // Count total highlights
-  const totalHighlights = Math.min(
-    arabicSegments.filter((s) => s.isHighlight).length,
-    translationSegments.filter((s) => s.isHighlight).length,
-  );
+  // Count total highlights and calculate individual durations based on text length
+  const arabicHighlights = arabicSegments.filter((s) => s.isHighlight);
+  const translationHighlights = translationSegments.filter((s) => s.isHighlight);
+  const totalHighlights = Math.min(arabicHighlights.length, translationHighlights.length);
 
-  const delayFrames = highlightDelaySeconds * fps;
+  // Calculate duration for each highlight based on text length
+  const highlightDurations = [];
+  const baseDelayFrames = highlightDelaySeconds * fps;
+  const minDurationFrames = Math.max(30, baseDelayFrames); // Minimum 1 second
+
+  for (let i = 0; i < totalHighlights; i++) {
+    const arabicText = arabicHighlights[i]?.text || "";
+    const translationText = translationHighlights[i]?.text || "";
+    
+    // Use the longer text to calculate duration (character count)
+    const maxLength = Math.max(arabicText.length, translationText.length);
+    
+    // Base duration + extra time for longer text (roughly 0.05 seconds per character)
+    const extraTime = Math.max(0, (maxLength - 20) * 0.05); // Extra time for text longer than 20 chars
+    const durationSeconds = highlightDelaySeconds + extraTime;
+    const durationFrames = Math.max(minDurationFrames, durationSeconds * fps);
+    
+    highlightDurations.push(durationFrames);
+  }
+
+  // Calculate cumulative timing for each highlight
   const initialDelayFrames = 1 * fps; // 1 second breathing room before first highlight
-  const highlightDurationFrames = Math.max(30, delayFrames); // Minimum 1 second per highlight
+  const cumulativeTimings = [initialDelayFrames]; // Start with initial delay
+  
+  for (let i = 0; i < highlightDurations.length; i++) {
+    const lastTiming = cumulativeTimings[cumulativeTimings.length - 1];
+    cumulativeTimings.push(lastTiming + highlightDurations[i]);
+  }
 
-  // Calculate current highlight index and progress (accounting for initial delay)
-  const frameAfterInitialDelay = Math.max(0, frame - initialDelayFrames);
-  const currentHighlightIndex = Math.floor(frameAfterInitialDelay / delayFrames);
-  const highlightStartFrame = currentHighlightIndex * delayFrames;
-  const progressInCurrentHighlight = frameAfterInitialDelay - highlightStartFrame;
+  // Find current highlight index and progress
+  // Highlights should start after: startDelay (1s) + entryAnimation (2s) + initialDelay (1s) = 4s total
+  const totalDelayBeforeHighlights = (1 + 2 + 1) * fps; // 4 seconds total delay
+  const frameAfterAllDelays = Math.max(0, frame - totalDelayBeforeHighlights);
+  let currentHighlightIndex = -1;
+  let progressInCurrentHighlight = 0;
+
+  for (let i = 0; i < totalHighlights; i++) {
+    const startFrame = cumulativeTimings[i] - initialDelayFrames;
+    const endFrame = cumulativeTimings[i + 1] - initialDelayFrames;
+    
+    if (frameAfterAllDelays >= startFrame && frameAfterAllDelays < endFrame) {
+      currentHighlightIndex = i;
+      progressInCurrentHighlight = frameAfterAllDelays - startFrame;
+      break;
+    }
+  }
+
+  // If we're past all highlights, set to the last one as completed
+  if (currentHighlightIndex === -1 && frameAfterAllDelays >= (cumulativeTimings[totalHighlights] - initialDelayFrames)) {
+    currentHighlightIndex = totalHighlights; // This will make all highlights appear as completed
+  }
 
   const highlightProgress =
-    currentHighlightIndex < totalHighlights
+    currentHighlightIndex >= 0 && currentHighlightIndex < totalHighlights
       ? spring({
           frame: progressInCurrentHighlight,
           fps,
@@ -252,7 +298,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
             stiffness: 100,
           },
         })
-      : 1;
+      : currentHighlightIndex >= totalHighlights ? 1 : 0;
 
   // Entry animation for the whole layout (delayed by 1 second)
   const startDelayFrames = 1 * fps; // 1 second delay before fade-in starts

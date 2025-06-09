@@ -100,7 +100,22 @@ async function main() {
           codec: 'h264',
           outputLocation: path.join(outputDir, `${filename}.mp4`),
           inputProps,
-          // Optional: Add more render settings
+          // Stability settings to prevent "Target closed" errors
+          concurrency: 1, // Reduce concurrency to prevent memory issues
+          timeoutInMilliseconds: 60000, // Increase timeout to 60 seconds
+          chromiumOptions: {
+            // Add Chrome stability flags
+            additionalOptions: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox', 
+              '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--no-first-run',
+              '--no-zygote',
+              '--disable-gpu',
+            ],
+          },
+          // Render settings
           imageFormat: 'jpeg',
           jpegQuality: 90,
         });
