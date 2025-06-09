@@ -5,6 +5,11 @@ import {
   spring,
   useCurrentFrame,
   useVideoConfig,
+  Img,
+  delayRender,
+  continueRender,
+  OffthreadVideo,
+  staticFile,
 } from "remotion";
 import { z } from "zod";
 import QRCode from "qrcode";
@@ -17,6 +22,7 @@ export const arabicBookSchema = z.object({
   bookUrl: z.string().url(),
   arabicText: z.string(),
   translationText: z.string(),
+  grading: z.string().optional(),
   highlightDelaySeconds: z.number().default(0.5),
 });
 
@@ -81,16 +87,12 @@ const HighlightedText: React.FC<{
 
   return (
     <div
-      className={`text-5xl leading-relaxed ${
-        isArabic ? "text-right font-arabic" : "text-left"
-      }`}
+      className={`${isArabic ? "text-5xl text-right font-bold" : "text-3xl text-left"} leading-relaxed`}
       style={{
         direction: isArabic ? "rtl" : "ltr",
         fontFamily: isArabic
           ? "Arial, 'Noto Sans Arabic', sans-serif"
           : "inherit",
-        fontWeight: isArabic ? 'bold':'normal',
-        fontSize: isArabic? '4em' : '3em',
       }}
     >
       {segments.map((segment, index) => {
@@ -164,6 +166,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   bookUrl,
   arabicText,
   translationText,
+  grading,
   highlightDelaySeconds,
 }) => {
   const frame = useCurrentFrame();
@@ -171,8 +174,12 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
 
   // Generate QR code
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
+    // Delay render until QR code is generated
+    const handle = delayRender("Generating QR code");
+    
     QRCode.toDataURL(bookUrl, {
       width: 120,
       margin: 1,
@@ -183,12 +190,38 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
     })
       .then((url) => {
         setQrCodeDataUrl(url);
+        continueRender(handle);
       })
       .catch((error) => {
         console.error("Error generating QR code:", error);
         setQrCodeDataUrl(null);
+        continueRender(handle);
       });
   }, [bookUrl]);
+
+  useEffect(() => {
+    // Delay render until book cover image is preloaded
+    if (!bookCoverUrl) {
+      setImageLoaded(true);
+      return;
+    }
+
+    const handle = delayRender("Loading book cover image");
+    const img = new Image();
+    
+    img.onload = () => {
+      setImageLoaded(true);
+      continueRender(handle);
+    };
+    
+    img.onerror = () => {
+      console.error("Failed to load book cover image:", bookCoverUrl);
+      setImageLoaded(true);
+      continueRender(handle);
+    };
+    
+    img.src = bookCoverUrl;
+  }, [bookCoverUrl]);
 
   const arabicSegments = parseTextWithHighlights(arabicText);
   const translationSegments = parseTextWithHighlights(translationText);
@@ -200,12 +233,14 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   );
 
   const delayFrames = highlightDelaySeconds * fps;
+  const initialDelayFrames = 1 * fps; // 1 second breathing room before first highlight
   const highlightDurationFrames = Math.max(30, delayFrames); // Minimum 1 second per highlight
 
-  // Calculate current highlight index and progress
-  const currentHighlightIndex = Math.floor(frame / delayFrames);
+  // Calculate current highlight index and progress (accounting for initial delay)
+  const frameAfterInitialDelay = Math.max(0, frame - initialDelayFrames);
+  const currentHighlightIndex = Math.floor(frameAfterInitialDelay / delayFrames);
   const highlightStartFrame = currentHighlightIndex * delayFrames;
-  const progressInCurrentHighlight = frame - highlightStartFrame;
+  const progressInCurrentHighlight = frameAfterInitialDelay - highlightStartFrame;
 
   const highlightProgress =
     currentHighlightIndex < totalHighlights
@@ -219,9 +254,10 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
         })
       : 1;
 
-  // Entry animation for the whole layout
+  // Entry animation for the whole layout (delayed by 1 second)
+  const startDelayFrames = 1 * fps; // 1 second delay before fade-in starts
   const entryProgress = spring({
-    frame,
+    frame: frame - startDelayFrames,
     fps,
     config: {
       damping: 200,
@@ -233,17 +269,37 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
   const fadeIn = interpolate(entryProgress, [0, 1], [0, 1]);
 
   return (
-    <AbsoluteFill className="bg-white flex items-center justify-center">
-      {/* Centering Container */}
-      <div
-        className="flex px-32 py-16 gap-8 w-full items-center" // Wider container for larger texts
-        style={{
-          opacity: fadeIn,
-          // transform: `translateX(${slideIn}px)`, // Keep slide-in if desired, or remove for pure centering
-        }}
-      >
+    <AbsoluteFill>
+      {/* White Background Layer */}
+      <AbsoluteFill style={{ backgroundColor: "white" }} />
+      
+      {/* Semi-transparent Background Video Layer */}
+      <AbsoluteFill>
+        <OffthreadVideo
+          src={staticFile("background/default.mp4")}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.2,
+          }}
+          volume={0}
+          loop
+        />
+      </AbsoluteFill>
+
+      {/* Content Layer - on top of background video */}
+      <AbsoluteFill className="flex items-center justify-center min-h-screen">
+        {/* Centering Container - 80% screen width */}
+        <div
+          className="flex px-16 py-8 gap-8 items-center justify-center"
+          style={{
+            opacity: fadeIn,
+            width: "80%",
+          }}
+        >
         {/* Left Column - Text Content */}
-        <div className="w-full flex flex-col space-y-4">
+        <div className="flex-1 flex flex-col space-y-6">
           {/* Arabic Text */}
           <div>
             <HighlightedText
@@ -265,12 +321,19 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
               highlightDirection="ltr"
             />
           </div>
+
+          {/* Grading - below translation text */}
+          {grading && (
+            <div className="bg-green-600 text-white px-4 py-2 text-lg font-semibold w-fit rounded">
+              {grading}
+            </div>
+          )}
         </div>
 
         {/* Right Column - Book Cover and Details */}
         <div className="shrink-0 min-w-[300px] flex flex-col items-center justify-center space-y-4">
-          {/* Book Title */}
-          <div className="bg-blue-700 text-white px-4 py-3 text-xl font-semibold self-start">
+          {/* Book Title - Centered */}
+          <div className="bg-blue-700 text-white px-4 py-3 text-xl font-semibold w-full text-center">
             <h1>{bookTitle}</h1>
           </div>
           {/* Author */}
@@ -281,17 +344,15 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
             )}
           </div>
           {/* Book Cover */}
-          <div
-            className="bg-gray-200 rounded-lg shadow-xl w-full h-auto relative"
-            style={{
-              aspectRatio: "3/4", // Maintain aspect ratio
-              backgroundImage: `url(${bookCoverUrl})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            {/* Fallback if image doesn't load or if no URL */}
-            {!bookCoverUrl && (
+          <div className="bg-gray-200 rounded-lg shadow-xl w-full relative" style={{ aspectRatio: "3/4" }}>
+            {/* Use Remotion's Img component to prevent flickering */}
+            {bookCoverUrl ? (
+              <Img
+                src={bookCoverUrl}
+                className="w-full h-full object-cover rounded-lg"
+                alt="Book Cover"
+              />
+            ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-500 text-center p-4">
                 [Book Cover Image]
               </div>
@@ -305,6 +366,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
           </div>
         </div>
       </div>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };

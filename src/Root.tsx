@@ -62,6 +62,7 @@ export const RemotionRoot: React.FC = () => {
           bookUrl: "https://example.com/book-details",
           arabicText: "هذا النص العربي مع <highlight color=\"#ff6b6b\">التمييز الأول</highlight> و <highlight color=\"#4ecdc4\">التمييز الثاني</highlight> في المكان المناسب",
           translationText: "This is Arabic text with <highlight color=\"#ff6b6b\">first highlight</highlight> and <highlight color=\"#4ecdc4\">second highlight</highlight> in the right place",
+          grading: "Sahih",
           highlightDelaySeconds: 0.5,
         }}
       />

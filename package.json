@@ -6,10 +6,13 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@remotion/bundler": "^4.0.314",
     "@remotion/cli": "^4.0.314",
+    "@remotion/renderer": "^4.0.314",
     "@remotion/tailwind-v4": "4.0.314",
     "@remotion/zod-types": "4.0.314",
     "@types/qrcode": "^1.5.5",
+    "csv-parser": "^3.2.0",
     "qrcode": "^1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -29,7 +32,8 @@
     "dev": "npx remotion studio",
     "build": "npx remotion bundle",
     "upgrade": "npx remotion upgrade",
-    "lint": "eslint src && tsc"
+    "lint": "eslint src && tsc",
+    "batch-render": "node scripts/batch-render.mjs"
   },
   "sideEffects": [
     "*.css"
