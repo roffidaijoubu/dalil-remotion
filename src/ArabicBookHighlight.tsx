@@ -407,7 +407,7 @@ export const ArabicBookHighlight: React.FC<ArabicBookProps> = ({
             </div>
             {/* Book Cover */}
             <div
-              className="bg-gray-200 rounded-lg shadow-xl w-full relative"
+              className="bg-gray-200 rounded-lg shadow-xl w-full relative max-w-[300px] max-h-[400px]"
               style={{ aspectRatio: "3/4" }}
             >
               {/* Use Remotion's Img component to prevent flickering */}
