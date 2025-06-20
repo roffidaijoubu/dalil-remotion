@@ -60,6 +60,14 @@ async function main() {
       const entry = data[i];
       const { filename, ...inputProps } = entry;
       
+      const outputPath = path.join(outputDir, `${filename}.mp4`);
+      
+      // Check if video already exists
+      if (fs.existsSync(outputPath)) {
+        console.log(`\n⏭️  Skipping video ${i + 1}/${data.length}: ${filename} (already exists)`);
+        continue;
+      }
+      
       console.log(`\n🎬 Rendering video ${i + 1}/${data.length}: ${filename}`);
       console.log(`📖 Book: ${inputProps.bookTitle} by ${inputProps.bookAuthor}`);
       
@@ -98,7 +106,7 @@ async function main() {
           },
           serveUrl: bundleLocation,
           codec: 'h264',
-          outputLocation: path.join(outputDir, `${filename}.mp4`),
+          outputLocation: outputPath,
           inputProps,
           // Stability settings to prevent "Target closed" errors
           concurrency: 1, // Reduce concurrency to prevent memory issues

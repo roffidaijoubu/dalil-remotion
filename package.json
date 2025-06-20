@@ -8,6 +8,7 @@
   "dependencies": {
     "@remotion/bundler": "^4.0.314",
     "@remotion/cli": "^4.0.314",
+    "@remotion/lambda": "4.0.314",
     "@remotion/renderer": "^4.0.314",
     "@remotion/tailwind-v4": "4.0.314",
     "@remotion/zod-types": "4.0.314",
